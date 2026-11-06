@@ -13,6 +13,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [armeabi-v7a, arm64-v8a]
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +46,7 @@ jobs:
           ndk-version: r21e
           add-to-path: false
 
-      - name: APK bauen
+      - name: APK bauen (${{ matrix.abi }})
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
           ANDROID_NDK_HOST: linux-x86_64
@@ -55,7 +59,7 @@ jobs:
           else
             CFG="CONFIG += release_android"
           fi
-          qmake -config release "$CFG" ANDROID_ABIS="arm64-v8a" -spec android-clang
+          qmake -config release "$CFG" ANDROID_ABIS="${{ matrix.abi }}" -spec android-clang
           make -j"$(nproc)"
           make install INSTALL_ROOT=build/android/build
           "$QT_BIN/androiddeployqt" --gradle --no-gdbserver \
@@ -63,9 +67,9 @@ jobs:
             --input android-vesc_tool-deployment-settings.json \
             --android-platform android-33
           mkdir -p out
-          cp build/android/build/build/outputs/apk/debug/*.apk out/vesc_tool.apk
+          cp build/android/build/build/outputs/apk/debug/*.apk "out/vesc_tool_${{ matrix.abi }}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: vesc_tool_apk
+          name: vesc_tool_${{ matrix.abi }}
           path: out/*.apk
